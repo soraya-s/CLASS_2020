@@ -11,8 +11,10 @@ knitr::opts_chunk$set(echo = TRUE)
 options(stringsAsFactors = FALSE)
 library(tidyverse)
 library(GenomicRanges)
-source("../util/intersect_functions.R")
-source("../util/_setup.R")
+source("../../util/intersect_functions.R")
+source("../../util/_setup.R")
+
+#in directory /scratch/Users/sasp9297/CLASS_2020/analysis/00_class_exercises/lncrna_group
 ```
 
 ## Purpose: Determine statistical enrichment depletion of each peak set vs. sets of regions.
@@ -24,14 +26,18 @@ That's what we'll be doing here. In particular, we're going to randomly shuffle 
 ```{r}
 # Q: Is it a reasonable thing to do, placing the peaks randomly around the genome? HINT: Can we expect that ChIP-peaks will map to centromeres?
 
+probably not, would lead to high false discovery rate (FDR), try to only place where it's reasonable 
+
 # Q: What are some corrections we could apply to make the null distribution more accurate? HINT: What if some TF is enriched on one particular chromosome?
+Varience test to normalize for the disribution so it's more representative of actual distribution
+
 ## BONUS!! Calculate chromosomal enrichment for the peak sets. Are there some that are statistically significantly enriched on some chromosomes?
 
 
 ## We won't be applying those corrections here since it slows down the calcultation of shuffled peaks, but it's something to be aware of in this analysis!
 
 ## Q: What are some reproduciblity considerations in this analysis given that we're using random number generators to shuffle the peaks?
-
+You have to set the seed 
 
 ```
 
@@ -86,12 +92,14 @@ for(i in 1:length(peak_list)) {
 
 ```{r}
 # Q: How many of the peak files have zero consensus peaks?
+peak_list <- peak_list[sapply(peak_list,length)>0]
+
 # They can't really be enriched/depleted in any regions...
 # So, I'll leave it up to you to filter these out of the peak list.
 
 
 # Q: If we're just comparing mRNA and lncRNA promoters vs. each peak set, how many permutation tests are we about to run?
-
+185x2=370
 
 ###### WHEN YOU GET HERE, SLACK US IN THE #INREALTIME CHANNEL AND WE'LL CHECK IN ######
 ```
@@ -105,17 +113,28 @@ chr_len <- read_csv("/Shares/rinn_class/data/k562_chip/analysis/11_peak_feature_
 
 # Q: How is this function achieving shuffling? Put comments above lines with what that line is doing?
 # HINT: If you're having trouble understanding what it's doing, you can paste this into a .R file
+
+
 # and use the debugger to step through it line by line and look at the objects that are created.
 ## BONUS: Is there a way to speed this up/make it more efficient?
 shuffle_peaks <- function (peak_gr, genome) {
+#making list of chromosomes and lengths
   chrLens <- genome[names(seqlengths(peak_gr)),"size"]
+#making a vector of which chromosome each is on 
   nn <- as.vector(seqnames(peak_gr))
+#ordering by chromosome number
   ii <- order(nn)
+#taking widths of the peaks
   w <- width(peak_gr)
+#table of which chromosome each is on 
   nnt <- table(nn)
+#ordering the table by the chromosome number 
   jj <- order(names(nnt))
+#no idea, redundant? 
   nnt <- nnt[jj]
+#no idea, redundant?
   chrLens <- chrLens[jj]
+#?????????
   ss <- unlist(sapply(1:length(nnt), function(i) sample(chrLens[i], 
                                                         nnt[i])))
   res <- GRanges(seqnames = nn[ii], ranges = IRanges(ss, width = w[ii]), 
@@ -124,7 +143,7 @@ shuffle_peaks <- function (peak_gr, genome) {
 }
 
 
-# This is a wrapper funciton which will call shuffle_peaks a number of times
+# This is a wrapper function which will call shuffle_peaks a number of times
 # and return each permuted peak set as a list.
 make_permutations <- function(region_set, genome, nperms) {
   perms <- list()
