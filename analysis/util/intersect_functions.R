@@ -231,9 +231,11 @@ get_promoter_regions <- function(gencode_gr, biotype, upstream = 3e3, downstream
 #' #list of peaks of dna binding proteins that will be intersected
 
 
-count_peaks_per_feature <- function(features, peak_list) {
+count_peaks_per_feature <- function(features, peak_list, type = "counts") {
   
-  peak_count_list <- list()
+  if(!(type %in% c("counts", "occurence"))) {
+    stop("Type must be either occurence or counts.")
+  }
   
   peak_count <- matrix(numeric(), ncol = length(features), nrow = 0)
   
@@ -244,12 +246,17 @@ count_peaks_per_feature <- function(features, peak_list) {
     colnames(peak_count) <- features$gene_id
   }
   
-  peak_count_list <- c(peak_count_list, list(peak_count))
-  names(peak_count_list)[i] <- names(feature_sets)[i]
+  peak_matrix <- peak_count
   
-  return(peak_count_list)
+  if(type == "occurence") {
+    peak_occurence <- matrix(as.numeric(peak_count > 0), 
+                             nrow = dim(peak_count)[1],
+                             ncol = dim(peak_count)[2])
+    rownames(peak_occurence) <- rownames(peak_count)
+    colnames(peak_occurence) <- colnames(peak_count)
+    peak_matrix <- peak_occurence
+  }
+  
+  return(peak_matrix)
   
 }
-
-
-
